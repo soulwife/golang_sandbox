@@ -1,137 +1,139 @@
-import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"strings"
-	"time"
-)
+package main
 
-const (
-	poolLimit  = 5000
-	count      = 10
-	limitDays  = 30
-	expiration = 0
-)
+// import (
+// 	"context"
+// 	"encoding/json"
+// 	"fmt"
+// 	"strings"
+// 	"time"
+// )
 
-var excludedKeysPrefixes = []string{
-	"countUnread_",
-	"count_limit_message_",
-	"limit_message_"
-}
+// const (
+// 	poolLimit  = 5000
+// 	count      = 10
+// 	limitDays  = 30
+// 	expiration = 0
+// )
 
-type removeExpiredMessagesInCacheCommand struct {
-	redisClient iRedisClient
-}
+// var excludedKeysPrefixes = []string{
+// 	"countUnread_",
+// 	"count_limit_message_",
+// 	"limit_message_"
+// }
 
-type iRedisClient interface {
-	Scan(ctx context.Context, cursor uint64, match string, count int64) ([]string, uint64, error)
-	Set(ctx context.Context, key string, value string, expiration time.Duration) error
-	Get(ctx context.Context, key string) (string, error)
-}
+// type removeExpiredMessagesInCacheCommand struct {
+// 	redisClient iRedisClient
+// }
 
-func MakeRemoveExpiredMessagesInCacheCommand(redisClient iRedisClient) removeExpiredMessagesInCacheCommand {
-	return removeExpiredMessagesInCacheCommand{
-		redisClient: redisClient,
-	}
-}
+// type iRedisClient interface {
+// 	Scan(ctx context.Context, cursor uint64, match string, count int64) ([]string, uint64, error)
+// 	Set(ctx context.Context, key string, value string, expiration time.Duration) error
+// 	Get(ctx context.Context, key string) (string, error)
+// }
 
-func (rem removeExpiredMessagesInCacheCommand) Run(ctx context.Context) {
-	fmt.Println("Started removeExpiredMessagesFromCache command")
-	now := time.Now()
-	numberOfScans := 0
+// func MakeRemoveExpiredMessagesInCacheCommand(redisClient iRedisClient) removeExpiredMessagesInCacheCommand {
+// 	return removeExpiredMessagesInCacheCommand{
+// 		redisClient: redisClient,
+// 	}
+// }
 
-	var cursor uint64
-	var err error
+// func (rem removeExpiredMessagesInCacheCommand) Run(ctx context.Context) {
+// 	fmt.Println("Started removeExpiredMessagesFromCache command")
+// 	now := time.Now()
+// 	numberOfScans := 0
 
-	for {
-		var keys []string
+// 	var cursor uint64
+// 	var err error
 
-		keys, cursor, err = rem.redisClient.Scan(ctx, cursor, "*", count)
+// 	for {
+// 		var keys []string
 
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
+// 		keys, cursor, err = rem.redisClient.Scan(ctx, cursor, "*", count)
 
-		numberOfScans++
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			return
+// 		}
 
-		for _, key := range keys {
+// 		numberOfScans++
 
-			if !rem.doesKeyShouldBeExcluded(key) {
-				fmt.Println("Skipped key:", key)
-				continue
-			}
+// 		for _, key := range keys {
 
-			record, err := rem.redisClient.Get(ctx, key)
+// 			if !rem.doesKeyShouldBeExcluded(key) {
+// 				fmt.Println("Skipped key:", key)
+// 				continue
+// 			}
 
-			if err != nil {
-				fmt.Println(err.Error())
-				continue
-			}
+// 			record, err := rem.redisClient.Get(ctx, key)
 
-			messages := in_app.Messages{}
+// 			if err != nil {
+// 				fmt.Println(err.Error())
+// 				continue
+// 			}
 
-			err = json.Unmarshal([]byte(record), &messages)
+// 			messages := in_app.Messages{}
 
-			if err != nil {
-				fmt.Println(err.Error())
-				continue
-			}
+// 			err = json.Unmarshal([]byte(record), &messages)
 
-			position := 0
+// 			if err != nil {
+// 				fmt.Println(err.Error())
+// 				continue
+// 			}
 
-			for _, message := range messages {
-				messageCreatedAt := time.Unix(message.CreatedAt, 0)
-				diffDays := int(now.Sub(messageCreatedAt).Hours() / 24)
+// 			position := 0
 
-				if diffDays < limitDays {
-					break
-				}
+// 			for _, message := range messages {
+// 				messageCreatedAt := time.Unix(message.CreatedAt, 0)
+// 				diffDays := int(now.Sub(messageCreatedAt).Hours() / 24)
 
-				position++
-			}
+// 				if diffDays < limitDays {
+// 					break
+// 				}
 
-			if position > 0 {
-				messages = messages[position:]
+// 				position++
+// 			}
 
-				value, err := json.Marshal(messages)
+// 			if position > 0 {
+// 				messages = messages[position:]
 
-				if err != nil {
-					fmt.Println(err.Error())
-					continue
-				}
+// 				value, err := json.Marshal(messages)
 
-				err = rem.redisClient.Set(ctx, key, string(value), expiration)
+// 				if err != nil {
+// 					fmt.Println(err.Error())
+// 					continue
+// 				}
 
-				if err != nil {
-					fmt.Println(err.Error())
-					continue
-				}
+// 				err = rem.redisClient.Set(ctx, key, string(value), expiration)
 
-				fmt.Println("Updated key:", key)
-			}
-		}
+// 				if err != nil {
+// 					fmt.Println(err.Error())
+// 					continue
+// 				}
 
-		if numberOfScans >= poolLimit {
-			fmt.Println("Wait for connections to die")
-			numberOfScans = 0
-			time.Sleep(time.Second)
-		}
+// 				fmt.Println("Updated key:", key)
+// 			}
+// 		}
 
-		if cursor == 0 {
-			break
-		}
-	}
+// 		if numberOfScans >= poolLimit {
+// 			fmt.Println("Wait for connections to die")
+// 			numberOfScans = 0
+// 			time.Sleep(time.Second)
+// 		}
 
-	fmt.Println("Finished removeExpiredMessagesFromCache command")
-}
+// 		if cursor == 0 {
+// 			break
+// 		}
+// 	}
 
-func (rem removeExpiredMessagesInCacheCommand) doesKeyShouldBeExcluded(key string) bool {
-	for _, exlcudedKeyPrefix := range excludedKeysPrefixes {
-		if strings.Contains(key, exlcudedKeyPrefix) {
-			return false
-		}
-	}
+// 	fmt.Println("Finished removeExpiredMessagesFromCache command")
+// }
 
-	return true
-}
+// func (rem removeExpiredMessagesInCacheCommand) doesKeyShouldBeExcluded(key string) bool {
+// 	for _, exlcudedKeyPrefix := range excludedKeysPrefixes {
+// 		if strings.Contains(key, exlcudedKeyPrefix) {
+// 			return false
+// 		}
+// 	}
+
+// 	return true
+// }
