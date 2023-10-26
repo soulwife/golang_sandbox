@@ -34,7 +34,9 @@ go run RPNCalculator.go
 
 `Supported operations`: 
 
-"+", "-", "*", "/", "^", "sin", "cos", "tan", "asin", "acos", "atan", "sqrt", "ctg"
+```
++, -, *, /, ^, sin, cos, tan, asin, acos, atan, sqrt, ctg
+```
 
 `Example`:
 
@@ -51,6 +53,17 @@ Result: 0.841
 Enter an expression:
 4 16 sqrt sqrt +
 Result: 6
+Enter an expression:
++
+not enough elements to calculate
+4 5 + +
+not enough elements to calculate
+4 0 /
+can not divide by zero
+abc
+token is invalid: abc
+5
+Result: 5
 ~~~
 
 One can find tests in RPNCalculator_test.go.
