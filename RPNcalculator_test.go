@@ -58,7 +58,7 @@ func TestCalculateRPNNotANumber(t *testing.T) {
 	}
 }
 
-// TestCalculateRPNNotEnoughElements checks for an "not enough elements" error
+// Test checks for an "not enough elements" error
 func TestCalculateRPNNotEnoughElements(t *testing.T) {
 	res, err := calculateRPN("10 *")
 	expectedError := NOT_ENOUGH_ELEMENTS_ERROR
@@ -78,7 +78,7 @@ func TestCalculateRPNNotEnoughOperandElements(t *testing.T) {
 	}
 }
 
-// TestCalculateRPNDivideByZero checks for a "divide by zero" error
+// test checks for a "divide by zero" error
 func TestCalculateRPNDivideByZero(t *testing.T) {
 	res, err := calculateRPN("10 0 /")
 	expectedError := "can not divide by zero"
@@ -99,8 +99,8 @@ func TestCalculateRPNOneNumber(t *testing.T) {
 	}
 }
 
-// TestCalculateRPNWithNumbers tests the calculateRPN function with various expressions
-// that contain numbers. It verifies that the function returns the expected result
+// Tests the calculateRPN function with various expressions
+// It verifies that the function returns the expected result
 // within a certain tolerance.
 func TestCalculateRPNWithNumbers(t *testing.T) {
 	testCases := []struct {
@@ -112,9 +112,20 @@ func TestCalculateRPNWithNumbers(t *testing.T) {
 		{"2 3 *", 6},
 		{"2 3 /", 0.66},
 		{"2 3 ^", 8},
+		{"2.5 3.05 +", 5.55},
 		{"10 3 2 + -", 5},
 		{"10 3 * 2 ^", 900},
 		{"1 2 3 4 5 6 7 8 9 10 + + + + + + + + +", 55},
+		{"1 sin", 0.841},
+		{"180 cos", -0.598},
+		{"360 tan", -3.383},
+		{"90 ctg", -0.501},
+		{"-1 acos", 3.141},
+		{"1 asin", 1.57},
+		{"1 atan", 0.785},
+		{"4 sqrt", 2},
+		{"4 16 sqrt sqrt +", 6},
+		{"4 16 16 sqrt sqrt + +", 22},
 	}
 
 	for _, tc := range testCases {
